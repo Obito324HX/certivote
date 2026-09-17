@@ -26,6 +26,11 @@
 
   {% if not voter.phone_bound %}
     <p>First-time registration &mdash; confirm the student's ID card before binding a number.</p>
+    <p style="font-size:0.8rem; color:#666;">
+      Privacy notice: your name and phone number are used only to verify your identity when
+      voting. This data is deleted automatically 15 days after the last election of this
+      cycle closes. Your vote itself is never linked to your identity in any record.
+    </p>
     <form method="post" action="{{ url_for('admin_ui.register') }}">
       <input type="hidden" name="exam_number" value="{{ voter.exam_number }}">
       <label for="phone_number">Phone number</label>

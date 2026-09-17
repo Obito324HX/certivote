@@ -50,6 +50,7 @@ def create_app():
 def register_cli(app):
     import click
     from .models import db, AdminUser, AdminRole
+    from .retention import purge_expired_voter_data, DEFAULT_RETENTION_DAYS
 
     @app.cli.command("create-admin")
     @click.argument("username")
@@ -65,3 +66,18 @@ def register_cli(app):
         db.session.add(user)
         db.session.commit()
         click.echo(f"Created {role} account '{username}'.")
+
+    @app.cli.command("purge-expired-voters")
+    @click.option("--days", default=DEFAULT_RETENTION_DAYS, help="Retention period in days.")
+    def purge_expired_voters(days):
+        """
+        Purges voter PII (name, phone) once the last election of a cycle
+        has been closed for at least --days days. Safe to run repeatedly
+        (e.g. daily via a scheduler) -- it's a no-op while a cycle is
+        still active or not yet old enough.
+        """
+        count = purge_expired_voter_data(retention_days=days)
+        if count:
+            click.echo(f"Purged PII for {count} voter(s).")
+        else:
+            click.echo("Nothing to purge (cycle still active, or not old enough yet).")
