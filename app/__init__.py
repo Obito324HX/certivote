@@ -35,6 +35,7 @@ def create_app():
     from .results import results_bp
     from .voter_ui import voter_ui_bp
     from .admin_ui import admin_ui_bp
+    from .public_ui import public_ui_bp
     app.register_blueprint(auth_bp)
     app.register_blueprint(registrar_bp)
     app.register_blueprint(elections_bp)
@@ -42,6 +43,7 @@ def create_app():
     app.register_blueprint(results_bp)
     app.register_blueprint(voter_ui_bp)
     app.register_blueprint(admin_ui_bp)
+    app.register_blueprint(public_ui_bp)
 
     register_cli(app)
     return app
