@@ -1,0 +1,21 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="card">
+  <p>Signed in as <strong>{{ voter.full_name }}</strong> ({{ voter.exam_number }}, {{ voter.section }})</p>
+
+  {% if elections %}
+    <p>Elections you can vote in right now:</p>
+    {% for e in elections %}
+      <div class="election">
+        <span>{{ e.name }}</span>
+        <form method="post" action="{{ url_for('voter_ui.request_otp') }}">
+          <input type="hidden" name="election_id" value="{{ e.id }}">
+          <button type="submit">Vote</button>
+        </form>
+      </div>
+    {% endfor %}
+  {% else %}
+    <p>There are no elections currently open that you're eligible to vote in.</p>
+  {% endif %}
+</div>
+{% endblock %}

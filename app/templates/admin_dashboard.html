@@ -1,0 +1,66 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="card">
+  <p>Logged in as <strong>{{ admin.username }}</strong> ({{ admin.role.value }})
+     &mdash;
+     <form method="post" action="{{ url_for('admin_ui.logout') }}" style="display:inline;">
+       <button type="submit" style="background:none; color:#666; padding:0; margin:0; border:none; text-decoration:underline; cursor:pointer;">log out</button>
+     </form>
+  </p>
+</div>
+
+<div class="card">
+  <p>Look up a voter</p>
+  <form method="post" action="{{ url_for('admin_ui.lookup') }}">
+    <label for="exam_number">Exam number</label>
+    <input type="text" id="exam_number" name="exam_number" required autofocus>
+    <button type="submit">Look up</button>
+  </form>
+</div>
+
+{% if voter %}
+<div class="card">
+  <p><strong>{{ voter.full_name }}</strong> &mdash; {{ voter.exam_number }} &mdash; {{ voter.section }}</p>
+  <p>Phone: {{ voter.phone_masked }}
+     {% if voter.phone_bound %} (bound){% else %} (not yet registered){% endif %}</p>
+
+  {% if not voter.phone_bound %}
+    <p>First-time registration &mdash; confirm the student's ID card before binding a number.</p>
+    <form method="post" action="{{ url_for('admin_ui.register') }}">
+      <input type="hidden" name="exam_number" value="{{ voter.exam_number }}">
+      <label for="phone_number">Phone number</label>
+      <input type="text" id="phone_number" name="phone_number" required>
+      <button type="submit">Register</button>
+    </form>
+  {% else %}
+    <p>Re-bind (lost phone, changed number, or correcting an earlier entry).
+       {% if election_open %}
+         An election is currently open, so this requires a second admin's approval below.
+       {% endif %}
+    </p>
+    <form method="post" action="{{ url_for('admin_ui.rebind') }}">
+      <input type="hidden" name="exam_number" value="{{ voter.exam_number }}">
+      <label for="new_phone_number">New phone number</label>
+      <input type="text" id="new_phone_number" name="new_phone_number" required>
+      {% if election_open %}
+        <label for="approver_username">Approving admin's username</label>
+        <input type="text" id="approver_username" name="approver_username" required>
+        <label for="approver_password">Approving admin's password</label>
+        <input type="password" id="approver_password" name="approver_password" required>
+      {% endif %}
+      <button type="submit">Re-bind</button>
+    </form>
+  {% endif %}
+</div>
+{% endif %}
+
+{% if admin.role.value == "super_admin" %}
+<div class="card">
+  <p>Import / update voter roster (CSV: exam_number, section, full_name)</p>
+  <form method="post" action="{{ url_for('admin_ui.import_roster') }}" enctype="multipart/form-data">
+    <input type="file" name="file" accept=".csv" required>
+    <button type="submit">Import</button>
+  </form>
+</div>
+{% endif %}
+{% endblock %}

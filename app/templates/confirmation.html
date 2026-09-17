@@ -1,0 +1,11 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="card">
+  {% if ok %}
+    <div class="success">Your vote was recorded. A confirmation SMS has been sent to your registered phone.</div>
+  {% else %}
+    <div class="error">{{ error }}</div>
+  {% endif %}
+  <p style="margin-top:1rem;"><a href="{{ url_for('voter_ui.index') }}">Back to start</a></p>
+</div>
+{% endblock %}

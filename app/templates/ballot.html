@@ -1,0 +1,23 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="card">
+  <h2 style="font-size:1.1rem; margin-top:0;">{{ election.name }}</h2>
+  {% if error %}<div class="error">{{ error }}</div>{% endif %}
+  <form method="post" action="{{ url_for('voter_ui.cast') }}">
+    {% for position in election.positions %}
+      <fieldset>
+        <legend>{{ position.title }}</legend>
+        {% for c in position.candidates %}
+          <div class="candidate">
+            <label>
+              <input type="radio" name="position_{{ position.id }}" value="{{ c.id }}" required>
+              {{ c.name }}
+            </label>
+          </div>
+        {% endfor %}
+      </fieldset>
+    {% endfor %}
+    <button type="submit">Cast my vote</button>
+  </form>
+</div>
+{% endblock %}
