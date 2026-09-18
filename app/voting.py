@@ -13,7 +13,9 @@ voting_bp = Blueprint("voting", __name__, url_prefix="/vote")
 @voting_bp.route("/request-otp", methods=["POST"])
 def request_otp():
     data = request.get_json(force=True)
-    result, status = logic.do_request_otp(data.get("exam_number", "").strip(), data.get("election_id"))
+    result, status = logic.do_request_otp(
+        data.get("exam_number", "").strip(), data.get("election_id"), request.remote_addr
+    )
     return jsonify(result), status
 
 

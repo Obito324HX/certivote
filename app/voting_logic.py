@@ -2,6 +2,15 @@
 Core voting logic, extracted from voting.py so both the JSON API
 (voting.py) and the server-rendered voter pages (voter_ui.py) call the
 exact same code -- no duplicated business rules between the two.
+
+Also includes the supervised "kiosk" cast path (do_kiosk_cast), for
+voters with no phone or a lost/inaccessible device: a registrar
+verifies the student's ID in person and the student votes right there,
+with the registrar's in-person verification standing in for the OTP.
+This still goes through the exact same _validate_and_write_vote
+transaction as the normal OTP path -- same anonymity split, same
+hash-chaining, same one-vote-per-election enforcement -- and is logged
+to the registrar audit trail so it's never an untracked shortcut.
 """
 
 import secrets
@@ -9,10 +18,11 @@ from datetime import datetime, timedelta
 
 from .models import (
     db, Voter, Election, ElectionStatus, ElectionScope,
-    OtpToken, VotingSession, VoteStatus, Ballot,
+    OtpToken, VotingSession, VoteStatus, Ballot, RegistrarAuditLog,
 )
 from .security import hash_value
 from .sms import send_sms
+from .registrar_logic import apply_pending_rebind
 from sqlalchemy.exc import IntegrityError
 
 OTP_TTL_MINUTES = 5
@@ -36,10 +46,13 @@ def eligible_open_elections(voter: Voter):
     return [e for e in open_elections if eligible_election_or_error(voter, e) is None]
 
 
-def do_request_otp(exam_number: str, election_id: int):
+def do_request_otp(exam_number: str, election_id: int, requesting_ip: str = None):
     voter = Voter.query.filter_by(exam_number=exam_number).first()
     if voter is None:
         return {"error": "exam number not found"}, 404
+
+    apply_pending_rebind(voter)
+
     if voter.phone_number is None:
         return {"error": "no phone number on file -- visit the registration desk first"}, 400
 
@@ -68,6 +81,7 @@ def do_request_otp(exam_number: str, election_id: int):
         election_id=election.id,
         code_hash=hash_value(otp),
         expires_at=datetime.utcnow() + timedelta(minutes=OTP_TTL_MINUTES),
+        requesting_ip=requesting_ip,
     )
     db.session.add(token)
     db.session.commit()
@@ -113,17 +127,8 @@ def do_verify_otp(exam_number: str, election_id: int, otp: str):
     return {"voting_session_token": raw_session_token, "expires_in_minutes": SESSION_TTL_MINUTES}, 200
 
 
-def do_cast_ballot(raw_token: str, selections: list):
-    session_row = VotingSession.query.filter_by(token_hash=hash_value(raw_token)).first()
-    if session_row is None:
-        return {"error": "invalid voting session"}, 401
-    if session_row.used:
-        return {"error": "this voting session has already been used"}, 409
-    if datetime.utcnow() > session_row.expires_at:
-        return {"error": "voting session expired -- verify your OTP again"}, 401
-
-    election = db.session.get(Election, session_row.election_id)
-    if election is None or election.status != ElectionStatus.OPEN:
+def _validate_and_write_vote(election: Election, voter: Voter, selections: list):
+    if election.status != ElectionStatus.OPEN:
         return {"error": "this election is no longer open"}, 409
 
     positions = {p.id: p for p in election.positions}
@@ -136,8 +141,6 @@ def do_cast_ballot(raw_token: str, selections: list):
         candidate_ids = {c.id for c in position.candidates}
         if s.get("candidate_id") not in candidate_ids:
             return {"error": f"invalid candidate for position '{position.title}'"}, 400
-
-    voter = db.session.get(Voter, session_row.voter_id)
 
     try:
         db.session.add(VoteStatus(election_id=election.id, voter_id=voter.id))
@@ -162,15 +165,71 @@ def do_cast_ballot(raw_token: str, selections: list):
             ))
             prev_hash = new_hash
 
-        session_row.used = True
         db.session.commit()
     except IntegrityError:
         db.session.rollback()
         return {"error": "you have already voted in this election"}, 409
+
+    return {"ok": True, "message": "vote recorded"}, 200
+
+
+def do_cast_ballot(raw_token: str, selections: list):
+    session_row = VotingSession.query.filter_by(token_hash=hash_value(raw_token)).first()
+    if session_row is None:
+        return {"error": "invalid voting session"}, 401
+    if session_row.used:
+        return {"error": "this voting session has already been used"}, 409
+    if datetime.utcnow() > session_row.expires_at:
+        return {"error": "voting session expired -- verify your OTP again"}, 401
+
+    election = db.session.get(Election, session_row.election_id)
+    if election is None:
+        return {"error": "this election is no longer open"}, 409
+    voter = db.session.get(Voter, session_row.voter_id)
+
+    result, status = _validate_and_write_vote(election, voter, selections)
+    if status != 200:
+        return result, status
+
+    session_row.used = True
+    db.session.commit()
 
     send_sms(
         voter.phone_number,
         f"Your vote was recorded at {datetime.utcnow().strftime('%H:%M')}. "
         f"If this wasn't you, contact the registration desk immediately.",
     )
-    return {"ok": True, "message": "vote recorded"}, 200
+    return result, status
+
+
+def do_kiosk_cast(actor_id: int, exam_number: str, election_id: int, selections: list):
+    voter = Voter.query.filter_by(exam_number=exam_number).first()
+    if voter is None:
+        return {"error": "no voter with that exam number in the roster"}, 404
+
+    election = db.session.get(Election, election_id)
+    if election is None:
+        return {"error": "election not found"}, 404
+
+    reason = eligible_election_or_error(voter, election)
+    if reason:
+        return {"error": reason}, 403
+
+    result, status = _validate_and_write_vote(election, voter, selections)
+    if status != 200:
+        return result, status
+
+    db.session.add(RegistrarAuditLog(
+        actor_id=actor_id,
+        voter_id=voter.id,
+        action="kiosk_vote",
+    ))
+    db.session.commit()
+
+    if voter.phone_number:
+        send_sms(
+            voter.phone_number,
+            f"Your vote was recorded at the registration desk at {datetime.utcnow().strftime('%H:%M')}. "
+            f"If this wasn't you, contact the college immediately.",
+        )
+    return result, status

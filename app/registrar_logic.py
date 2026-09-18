@@ -5,16 +5,30 @@ the HTML admin pages (admin_ui.py) call the exact same code.
 
 import csv
 import io
-from datetime import datetime
+from datetime import datetime, timedelta
 
 from .models import db, Voter, AdminUser, RegistrarAuditLog, Election, ElectionStatus
 from .security import hash_phone, mask_phone
+from .sms import send_sms
+
+REBIND_DELAY_MINUTES = 30
 
 
 def any_election_open() -> bool:
     return db.session.query(
         Election.query.filter_by(status=ElectionStatus.OPEN).exists()
     ).scalar()
+
+
+def apply_pending_rebind(voter: Voter) -> None:
+    if (voter.pending_phone_number
+            and voter.pending_rebind_effective_at
+            and datetime.utcnow() >= voter.pending_rebind_effective_at):
+        voter.phone_number = voter.pending_phone_number
+        voter.phone_bound_at = datetime.utcnow()
+        voter.pending_phone_number = None
+        voter.pending_rebind_effective_at = None
+        db.session.commit()
 
 
 def do_import_roster(file_storage):
@@ -51,12 +65,17 @@ def do_lookup(exam_number: str):
     if voter is None:
         return {"error": "no voter with that exam number in the roster"}, 404
 
+    apply_pending_rebind(voter)
+
     return {
         "exam_number": voter.exam_number,
         "full_name": voter.full_name,
         "section": voter.section,
         "phone_bound": voter.phone_number is not None,
         "phone_masked": mask_phone(voter.phone_number),
+        "pending_rebind": voter.pending_phone_number is not None,
+        "pending_effective_at": (voter.pending_rebind_effective_at.isoformat()
+                                  if voter.pending_rebind_effective_at else None),
     }, 200
 
 
@@ -87,8 +106,11 @@ def do_rebind(actor_id: int, exam_number: str, new_phone_number: str,
     if voter is None:
         return {"error": "no voter with that exam number in the roster"}, 404
 
+    apply_pending_rebind(voter)
+
     approver = None
-    if any_election_open():
+    election_open = any_election_open()
+    if election_open:
         if not approver_username or not approver_password:
             return {
                 "error": "an election is currently open -- rebind requires a second "
@@ -104,16 +126,38 @@ def do_rebind(actor_id: int, exam_number: str, new_phone_number: str,
             return {"error": "approver must be a registrar or super_admin"}, 403
 
     old_hash = hash_phone(voter.phone_number) if voter.phone_number else None
+    new_hash = hash_phone(new_phone_number)
+
+    if election_open:
+        old_phone_for_notice = voter.phone_number
+        voter.pending_phone_number = new_phone_number
+        voter.pending_rebind_effective_at = datetime.utcnow() + timedelta(minutes=REBIND_DELAY_MINUTES)
+
+        db.session.add(RegistrarAuditLog(
+            actor_id=actor_id, voter_id=voter.id, action="rebind_pending",
+            old_phone_hash=old_hash, new_phone_hash=new_hash,
+            approved_by_id=approver.id if approver else None,
+        ))
+        db.session.commit()
+
+        if old_phone_for_notice:
+            send_sms(
+                old_phone_for_notice,
+                f"Your Certivote voting phone number is being changed. If you did not "
+                f"request this, contact the registration desk immediately. The change "
+                f"takes effect in {REBIND_DELAY_MINUTES} minutes.",
+            )
+        return {
+            "ok": True, "exam_number": exam_number,
+            "message": f"Re-bind scheduled -- takes effect in {REBIND_DELAY_MINUTES} minutes.",
+        }, 200
+
     voter.phone_number = new_phone_number
     voter.phone_bound_at = datetime.utcnow()
 
     db.session.add(RegistrarAuditLog(
-        actor_id=actor_id,
-        voter_id=voter.id,
-        action="rebind",
-        old_phone_hash=old_hash,
-        new_phone_hash=hash_phone(new_phone_number),
-        approved_by_id=approver.id if approver else None,
+        actor_id=actor_id, voter_id=voter.id, action="rebind",
+        old_phone_hash=old_hash, new_phone_hash=new_hash, approved_by_id=None,
     ))
     db.session.commit()
     return {"ok": True, "exam_number": exam_number, "phone_masked": mask_phone(new_phone_number)}, 200

@@ -1,14 +1,17 @@
 """
 HTML pages for registrars and super_admins -- login, voter lookup,
 phone registration/re-bind (including the two-person approval prompt
-when an election is open), and roster import.
+and time-lock when an election is open), roster import, and the
+supervised kiosk voting flow for students with no phone/lost access.
 """
 
 from flask import Blueprint, render_template, request, redirect, url_for, session, flash
 
-from .models import AdminUser
+from .models import db, Election
 from .auth import require_role_page, current_admin
+from . import auth_logic
 from . import registrar_logic as logic
+from . import voting_logic
 
 admin_ui_bp = Blueprint("admin_ui", __name__, url_prefix="/admin")
 
@@ -18,11 +21,10 @@ def login():
     if request.method == "GET":
         return render_template("admin_login.html")
 
-    username = request.form.get("username", "").strip()
-    password = request.form.get("password", "")
-    user = AdminUser.query.filter_by(username=username).first()
-    if user is None or not user.check_password(password):
-        return render_template("admin_login.html", error="Invalid credentials.")
+    user, error = auth_logic.do_login(request.form.get("username", "").strip(),
+                                       request.form.get("password", ""))
+    if error:
+        return render_template("admin_login.html", error=error)
 
     session["admin_user_id"] = user.id
     session["admin_role"] = user.role.value
@@ -81,7 +83,7 @@ def rebind():
     result, status = logic.do_rebind(
         current_admin().id, exam_number, new_phone_number, approver_username, approver_password
     )
-    flash(result.get("error") if status != 200 else "Phone number re-bound.")
+    flash(result.get("error") if status != 200 else result.get("message", "Phone number re-bound."))
 
     voter, _ = logic.do_lookup(exam_number)
     return render_template("admin_dashboard.html", admin=current_admin(),
@@ -101,4 +103,49 @@ def import_roster():
     else:
         flash(f"Roster imported: {result['created']} created, {result['updated']} updated.")
 
+    return redirect(url_for("admin_ui.dashboard"))
+
+
+@admin_ui_bp.route("/kiosk/<exam_number>")
+@require_role_page("registrar", "super_admin")
+def kiosk(exam_number):
+    """
+    Supervised in-person voting for a student with no phone or lost
+    access. The registrar has already checked the student's ID card --
+    that in-person check is what stands in for the OTP here.
+    """
+    voter_result, status = logic.do_lookup(exam_number)
+    if status != 200:
+        flash(voter_result.get("error"))
+        return redirect(url_for("admin_ui.dashboard"))
+
+    from .models import Voter
+    voter = Voter.query.filter_by(exam_number=exam_number).first()
+    eligible = voting_logic.eligible_open_elections(voter)
+    return render_template("admin_kiosk.html", voter=voter, elections=eligible)
+
+
+@admin_ui_bp.route("/kiosk/<exam_number>/<int:election_id>")
+@require_role_page("registrar", "super_admin")
+def kiosk_ballot(exam_number, election_id):
+    election = db.session.get(Election, election_id)
+    if election is None:
+        flash("Election not found.")
+        return redirect(url_for("admin_ui.kiosk", exam_number=exam_number))
+    return render_template("admin_kiosk_ballot.html", exam_number=exam_number, election=election)
+
+
+@admin_ui_bp.route("/kiosk/<exam_number>/<int:election_id>/cast", methods=["POST"])
+@require_role_page("registrar", "super_admin")
+def kiosk_cast(exam_number, election_id):
+    election = db.session.get(Election, election_id)
+    selections = []
+    if election:
+        for position in election.positions:
+            candidate_id = request.form.get(f"position_{position.id}")
+            if candidate_id:
+                selections.append({"position_id": position.id, "candidate_id": int(candidate_id)})
+
+    result, status = voting_logic.do_kiosk_cast(current_admin().id, exam_number, election_id, selections)
+    flash(result.get("error") if status != 200 else "Vote recorded (supervised).")
     return redirect(url_for("admin_ui.dashboard"))

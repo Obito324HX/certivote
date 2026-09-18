@@ -5,11 +5,13 @@
   {% if error %}<div class="error">{{ error }}</div>{% endif %}
   <p>Enter the code sent to your registered phone number. It expires in 5 minutes.</p>
   <form method="post" action="{{ url_for('voter_ui.verify_otp') }}">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
     <label for="otp">Verification code</label>
     <input type="text" id="otp" name="otp" inputmode="numeric" pattern="[0-9]*" maxlength="6" required autofocus>
     <button type="submit">Verify</button>
   </form>
   <form method="post" action="{{ url_for('voter_ui.request_otp') }}" style="margin-top: 0.5rem;">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
     <input type="hidden" name="election_id" value="{{ election_id }}">
     <button type="submit" style="background: #666;">Resend code</button>
   </form>

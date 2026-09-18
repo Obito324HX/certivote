@@ -6,3 +6,4 @@ psycopg[binary]>=3.2.10
 python-dotenv==1.0.1
 africastalking==1.2.9
 gunicorn==23.0.0
+flask-wtf==1.2.2

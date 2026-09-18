@@ -55,7 +55,7 @@ def request_otp():
     if not exam_number:
         return redirect(url_for("voter_ui.index"))
 
-    result, status = logic.do_request_otp(exam_number, election_id)
+    result, status = logic.do_request_otp(exam_number, election_id, request.remote_addr)
     session["election_id"] = election_id
 
     if status != 200:

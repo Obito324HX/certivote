@@ -9,6 +9,7 @@
       <div class="election">
         <span>{{ e.name }}</span>
         <form method="post" action="{{ url_for('voter_ui.request_otp') }}">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
           <input type="hidden" name="election_id" value="{{ e.id }}">
           <button type="submit">Vote</button>
         </form>

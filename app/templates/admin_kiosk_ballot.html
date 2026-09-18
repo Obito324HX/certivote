@@ -2,8 +2,8 @@
 {% block content %}
 <div class="card">
   <h2 style="font-size:1.1rem; margin-top:0;">{{ election.name }}</h2>
-  {% if error %}<div class="error">{{ error }}</div>{% endif %}
-  <form method="post" action="{{ url_for('voter_ui.cast') }}">
+  <p style="font-size:0.85rem; color:#666;">Supervised ballot -- hand the device to the student to make their own selections.</p>
+  <form method="post" action="{{ url_for('admin_ui.kiosk_cast', exam_number=exam_number, election_id=election.id) }}">
     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
     {% for position in election.positions %}
       <fieldset>
@@ -18,7 +18,7 @@
         {% endfor %}
       </fieldset>
     {% endfor %}
-    <button type="submit">Cast my vote</button>
+    <button type="submit">Cast vote</button>
   </form>
 </div>
 {% endblock %}

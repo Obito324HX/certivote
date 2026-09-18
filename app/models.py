@@ -37,6 +37,13 @@ class AdminRole(enum.Enum):
 
 
 class Voter(db.Model):
+    """
+    pending_phone_number / pending_rebind_effective_at implement the
+    re-bind time-lock: while an election is open, a re-bind doesn't take
+    effect immediately -- it's staged here and only promoted to
+    phone_number once effective_at has passed (see
+    registrar_logic.apply_pending_rebind).
+    """
     __tablename__ = "voters"
 
     id = db.Column(db.Integer, primary_key=True)
@@ -46,6 +53,9 @@ class Voter(db.Model):
 
     phone_number = db.Column(db.String(20), nullable=True)
     phone_bound_at = db.Column(db.DateTime, nullable=True)
+
+    pending_phone_number = db.Column(db.String(20), nullable=True)
+    pending_rebind_effective_at = db.Column(db.DateTime, nullable=True)
 
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
 
@@ -89,6 +99,14 @@ class Candidate(db.Model):
 
 
 class VoteStatus(db.Model):
+    """
+    The UniqueConstraint below is a real database-level guarantee against
+    double voting -- it makes concurrent conflicting inserts fail
+    atomically at the database engine itself; the application code just
+    catches the resulting IntegrityError (see
+    voting_logic._validate_and_write_vote). Equivalent to row-locking for
+    an insert-once pattern, not a weaker substitute for it.
+    """
     __tablename__ = "vote_status"
 
     id = db.Column(db.Integer, primary_key=True)
@@ -122,6 +140,11 @@ class Ballot(db.Model):
 
 
 class OtpToken(db.Model):
+    """
+    requesting_ip is logged for the audit trail (never tied to the
+    ballot -- this is about detecting abuse patterns on the OTP
+    endpoint itself, not about deanonymizing a vote).
+    """
     __tablename__ = "otp_tokens"
 
     id = db.Column(db.Integer, primary_key=True)
@@ -131,6 +154,7 @@ class OtpToken(db.Model):
     expires_at = db.Column(db.DateTime, nullable=False)
     used = db.Column(db.Boolean, default=False)
     attempts = db.Column(db.Integer, default=0)
+    requesting_ip = db.Column(db.String(64), nullable=True)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
 
 
@@ -147,12 +171,20 @@ class VotingSession(db.Model):
 
 
 class AdminUser(db.Model):
+    """
+    failed_login_attempts / locked_until implement account lockout:
+    5 wrong passwords locks the account for 15 minutes. Reset on any
+    successful login.
+    """
     __tablename__ = "admin_users"
 
     id = db.Column(db.Integer, primary_key=True)
     username = db.Column(db.String(64), unique=True, nullable=False)
     password_hash = db.Column(db.String(256), nullable=False)
     role = db.Column(db.Enum(AdminRole), nullable=False)
+
+    failed_login_attempts = db.Column(db.Integer, default=0)
+    locked_until = db.Column(db.DateTime, nullable=True)
 
     def set_password(self, raw_password: str) -> None:
         self.password_hash = generate_password_hash(raw_password)
@@ -167,7 +199,7 @@ class RegistrarAuditLog(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     actor_id = db.Column(db.Integer, db.ForeignKey("admin_users.id"), nullable=False)
     voter_id = db.Column(db.Integer, db.ForeignKey("voters.id"), nullable=False)
-    action = db.Column(db.String(32), nullable=False)
+    action = db.Column(db.String(32), nullable=False)  # "register" | "rebind" | "rebind_pending" | "kiosk_vote"
 
     old_phone_hash = db.Column(db.String(64), nullable=True)
     new_phone_hash = db.Column(db.String(64), nullable=True)

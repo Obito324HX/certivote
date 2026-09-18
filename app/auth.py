@@ -7,6 +7,7 @@ from functools import wraps
 from flask import Blueprint, request, session, jsonify, redirect, url_for, flash
 
 from .models import db, AdminUser, AdminRole
+from . import auth_logic as logic
 
 auth_bp = Blueprint("auth", __name__, url_prefix="/auth")
 
@@ -14,12 +15,9 @@ auth_bp = Blueprint("auth", __name__, url_prefix="/auth")
 @auth_bp.route("/login", methods=["POST"])
 def login():
     data = request.get_json(force=True)
-    username = data.get("username", "")
-    password = data.get("password", "")
-
-    user = AdminUser.query.filter_by(username=username).first()
-    if user is None or not user.check_password(password):
-        return jsonify({"error": "invalid credentials"}), 401
+    user, error = logic.do_login(data.get("username", ""), data.get("password", ""))
+    if error:
+        return jsonify({"error": error}), 401
 
     session["admin_user_id"] = user.id
     session["admin_role"] = user.role.value
@@ -46,10 +44,6 @@ def require_role(*allowed_roles: str):
 
 
 def require_role_page(*allowed_roles: str):
-    """
-    Same check as require_role, but for HTML pages: redirects to the
-    admin login page with a flash message instead of returning JSON.
-    """
     def decorator(fn):
         @wraps(fn)
         def wrapper(*args, **kwargs):

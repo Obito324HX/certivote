@@ -1,0 +1,21 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="card">
+  <p>Supervised voting for <strong>{{ voter.full_name }}</strong> ({{ voter.exam_number }}, {{ voter.section }})</p>
+  <p style="font-size:0.85rem; color:#666;">Confirm the student's ID card before proceeding. This vote will be
+     logged as supervised, with your account recorded as the supervising registrar.</p>
+
+  {% if elections %}
+    {% for e in elections %}
+      <div class="election">
+        <span>{{ e.name }}</span>
+        <a href="{{ url_for('admin_ui.kiosk_ballot', exam_number=voter.exam_number, election_id=e.id) }}">
+          <button type="button">Vote here</button>
+        </a>
+      </div>
+    {% endfor %}
+  {% else %}
+    <p>No elections currently open that this student is eligible for.</p>
+  {% endif %}
+</div>
+{% endblock %}

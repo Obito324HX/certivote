@@ -5,8 +5,11 @@ load_dotenv()
 
 from flask import Flask
 from flask_migrate import Migrate
+from flask_wtf import CSRFProtect
 
 from .models import db
+
+csrf = CSRFProtect()
 
 
 def create_app():
@@ -27,6 +30,7 @@ def create_app():
 
     db.init_app(app)
     Migrate(app, db)
+    csrf.init_app(app)
 
     from .auth import auth_bp
     from .registrar import registrar_bp
@@ -44,6 +48,24 @@ def create_app():
     app.register_blueprint(voter_ui_bp)
     app.register_blueprint(admin_ui_bp)
     app.register_blueprint(public_ui_bp)
+
+    # CSRF protection covers browser-form blueprints (voter_ui, admin_ui,
+    # public_ui) since those are the ones that hold session cookies AND
+    # render forms a malicious page could try to auto-submit. The JSON
+    # API blueprints are exempted: they're meant for programmatic/curl
+    # use, don't render forms, and aren't the target of a CSRF attack in
+    # the same way.
+    csrf.exempt(auth_bp)
+    csrf.exempt(registrar_bp)
+    csrf.exempt(elections_bp)
+    csrf.exempt(voting_bp)
+    csrf.exempt(results_bp)
+
+    @app.after_request
+    def set_security_headers(response):
+        if os.environ.get("ENV") == "production":
+            response.headers["Strict-Transport-Security"] = "max-age=63072000; includeSubDomains"
+        return response
 
     register_cli(app)
     return app
