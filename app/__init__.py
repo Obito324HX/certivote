@@ -3,7 +3,7 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-from flask import Flask
+from flask import Flask, redirect, url_for
 from flask_migrate import Migrate
 from flask_wtf import CSRFProtect
 
@@ -49,20 +49,29 @@ def create_app():
     app.register_blueprint(admin_ui_bp)
     app.register_blueprint(public_ui_bp)
 
-    # CSRF protection covers browser-form blueprints (voter_ui, admin_ui,
-    # public_ui) since those are the ones that hold session cookies AND
-    # render forms a malicious page could try to auto-submit. The JSON
-    # API blueprints are exempted: they're meant for programmatic/curl
-    # use, don't render forms, and aren't the target of a CSRF attack in
-    # the same way.
     csrf.exempt(auth_bp)
     csrf.exempt(registrar_bp)
     csrf.exempt(elections_bp)
     csrf.exempt(voting_bp)
     csrf.exempt(results_bp)
 
+    @app.route("/")
+    def root():
+        return redirect(url_for("voter_ui.index"))
+
     @app.after_request
     def set_security_headers(response):
+        response.headers["X-Content-Type-Options"] = "nosniff"
+        response.headers["X-Frame-Options"] = "DENY"
+        response.headers["Content-Security-Policy"] = (
+            "default-src 'self'; "
+            "style-src 'self' 'unsafe-inline'; "
+            "script-src 'none'; "
+            "object-src 'none'; "
+            "base-uri 'self'; "
+            "frame-ancestors 'none'; "
+            "img-src 'self' data:;"
+        )
         if os.environ.get("ENV") == "production":
             response.headers["Strict-Transport-Security"] = "max-age=63072000; includeSubDomains"
         return response
@@ -76,12 +85,17 @@ def register_cli(app):
     from .models import db, AdminUser, AdminRole
     from .retention import purge_expired_voter_data, DEFAULT_RETENTION_DAYS
 
+    MIN_PASSWORD_LENGTH = 10
+
     @app.cli.command("create-admin")
     @click.argument("username")
     @click.argument("password")
     @click.argument("role", type=click.Choice([r.value for r in AdminRole]))
     def create_admin(username, password, role):
         """Usage: flask create-admin <username> <password> <registrar|super_admin|observer>"""
+        if len(password) < MIN_PASSWORD_LENGTH:
+            click.echo(f"Password must be at least {MIN_PASSWORD_LENGTH} characters.")
+            return
         if AdminUser.query.filter_by(username=username).first():
             click.echo(f"'{username}' already exists.")
             return
