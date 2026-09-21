@@ -65,10 +65,11 @@ def create_app():
         response.headers["X-Frame-Options"] = "DENY"
         response.headers["Content-Security-Policy"] = (
             "default-src 'self'; "
-            "style-src 'self' 'unsafe-inline'; "
+            "style-src 'self'; "
             "script-src 'none'; "
             "object-src 'none'; "
             "base-uri 'self'; "
+            "form-action 'self'; "
             "frame-ancestors 'none'; "
             "img-src 'self' data:;"
         )
