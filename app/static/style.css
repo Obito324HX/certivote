@@ -1,22 +1,276 @@
-/* Deliberately minimal -- no external CSS/JS framework, no webfonts,
-   so this loads fast on slow campus/peak-hour connections. */
-body { font-family: system-ui, -apple-system, sans-serif; max-width: 480px;
-       margin: 2rem auto; padding: 0 1rem; color: #1a1a1a; }
-h1 { font-size: 1.3rem; }
-.card { border: 1px solid #ddd; border-radius: 8px; padding: 1.25rem; margin-top: 1rem; }
-label { display: block; margin-top: 0.75rem; font-weight: 600; font-size: 0.9rem; }
-input[type=text], input[type=password], input[type=file] {
-  width: 100%; padding: 0.6rem; font-size: 1rem; margin-top: 0.25rem;
-  box-sizing: border-box; border: 1px solid #bbb; border-radius: 6px;
+/* ============================================================
+   Certivote design tokens
+   Ballot-and-seal vernacular: ink, paper, a single action accent
+   (oxblood), verification green, and brass reserved only for a
+   declared election winner. Public/turnout screens carry a dark
+   "broadcast" treatment; task screens (voting, registration) stay
+   quiet and undecorated -- the job there is speed, not delight.
+   No webfonts: Georgia (universally available) carries headlines,
+   system-ui carries UI text, monospace is reserved for genuine
+   data (vote counts, hashes) -- all zero-cost for a slow connection.
+   ============================================================ */
+:root {
+  --ink: #1B2430;
+  --ink-soft: rgba(27, 36, 48, 0.65);
+  --paper: #EAEDF0;
+  --card: #F6F7F5;
+  --line: rgba(27, 36, 48, 0.16);
+  --oxblood: #8C2F39;
+  --oxblood-dark: #6E2129;
+  --green: #2F6B4F;
+  --brass: #B08D57;
+  --broadcast-bg: #14181F;
+  --broadcast-text: #EDEFEC;
+  --broadcast-line: rgba(237, 239, 236, 0.14);
+  --radius: 3px;
 }
-button { margin-top: 1rem; padding: 0.6rem 1.2rem; font-size: 1rem; border: none;
-         border-radius: 6px; background: #1a1a1a; color: #fff; cursor: pointer; }
-button:hover { background: #333; }
-.error { background: #fdecea; color: #8a1c1c; padding: 0.75rem; border-radius: 6px; margin-top: 1rem; }
-.success { background: #eaf7ea; color: #1c5e20; padding: 0.75rem; border-radius: 6px; margin-top: 1rem; }
-.election { border: 1px solid #ddd; border-radius: 6px; padding: 0.75rem; margin-top: 0.75rem;
-            display: flex; justify-content: space-between; align-items: center; }
-.candidate { border: 1px solid #ddd; border-radius: 6px; padding: 0.75rem; margin-top: 0.5rem; }
-.candidate label { display: flex; align-items: center; gap: 0.5rem; font-weight: normal; }
-fieldset { border: 1px solid #ddd; border-radius: 8px; margin-top: 1rem; padding: 0.75rem 1rem; }
-legend { font-weight: 600; padding: 0 0.4rem; }
+
+* { box-sizing: border-box; }
+
+body {
+  font-family: system-ui, -apple-system, sans-serif;
+  max-width: 480px;
+  margin: 2rem auto;
+  padding: 0 1rem;
+  background: var(--paper);
+  color: var(--ink);
+  line-height: 1.45;
+}
+
+h1 {
+  font-family: Georgia, 'Iowan Old Style', 'Times New Roman', serif;
+  font-size: 1.4rem;
+  font-weight: 700;
+  letter-spacing: 0.01em;
+  margin-bottom: 0;
+}
+
+h2 {
+  font-family: Georgia, 'Iowan Old Style', 'Times New Roman', serif;
+  font-size: 1.15rem;
+  font-weight: 700;
+  margin: 0 0 0.5rem 0;
+}
+
+.card {
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-top: 3px solid var(--ink);
+  border-radius: var(--radius);
+  padding: 1.25rem;
+  margin-top: 1rem;
+}
+
+label {
+  display: block;
+  margin-top: 0.75rem;
+  font-weight: 600;
+  font-size: 0.9rem;
+}
+
+input[type=text], input[type=password], input[type=file] {
+  width: 100%;
+  padding: 0.6rem;
+  font-size: 1rem;
+  margin-top: 0.25rem;
+  box-sizing: border-box;
+  border: 1px solid var(--line);
+  border-radius: 2px;
+  background: #fff;
+  color: var(--ink);
+}
+input[type=text]:focus, input[type=password]:focus {
+  outline: none;
+  border-color: var(--oxblood);
+}
+
+button {
+  margin-top: 1rem;
+  padding: 0.6rem 1.2rem;
+  font-size: 1rem;
+  border: 1px solid var(--oxblood);
+  border-radius: 2px;
+  background: var(--oxblood);
+  color: #fff;
+  cursor: pointer;
+  font-family: inherit;
+}
+button:hover { background: var(--oxblood-dark); border-color: var(--oxblood-dark); }
+button.secondary {
+  background: transparent;
+  color: var(--ink);
+  border: 1px solid var(--line);
+}
+button.secondary:hover { border-color: var(--ink); background: transparent; }
+
+.error {
+  background: rgba(140, 47, 57, 0.08);
+  border-left: 3px solid var(--oxblood);
+  color: var(--ink);
+  padding: 0.75rem;
+  border-radius: 2px;
+  margin-top: 1rem;
+}
+.success {
+  background: rgba(47, 107, 79, 0.08);
+  border-left: 3px solid var(--green);
+  color: var(--ink);
+  padding: 0.75rem;
+  border-radius: 2px;
+  margin-top: 1rem;
+}
+
+.election {
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  padding: 0.75rem;
+  margin-top: 0.75rem;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: var(--card);
+}
+
+.candidate {
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  padding: 0.75rem;
+  margin-top: 0.5rem;
+  background: var(--card);
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+.candidate label {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  font-weight: normal;
+  margin-top: 0;
+  flex: 1;
+}
+.candidate-photo, .candidate-photo-placeholder {
+  width: 44px;
+  height: 44px;
+  border-radius: 2px;
+  object-fit: cover;
+  flex-shrink: 0;
+  border: 1px solid var(--line);
+}
+.candidate-photo-placeholder {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--ink);
+  color: var(--paper);
+  font-family: Georgia, serif;
+  font-weight: 700;
+  font-size: 1rem;
+}
+
+fieldset {
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  margin-top: 1rem;
+  padding: 0.75rem 1rem;
+}
+legend {
+  font-weight: 600;
+  padding: 0 0.4rem;
+  font-family: Georgia, serif;
+}
+
+.data {
+  font-family: ui-monospace, 'SF Mono', Consolas, monospace;
+  font-size: 0.85rem;
+}
+
+/* ---- Broadcast theme: public turnout + results reveal only ---- */
+body.broadcast {
+  background: var(--broadcast-bg);
+  color: var(--broadcast-text);
+}
+body.broadcast h1 { color: var(--broadcast-text); }
+body.broadcast .card {
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid var(--broadcast-line);
+  border-top: 1px solid var(--broadcast-line);
+}
+body.broadcast .error {
+  background: rgba(140, 47, 57, 0.18);
+  color: var(--broadcast-text);
+}
+body.broadcast .success {
+  background: rgba(47, 107, 79, 0.18);
+  color: var(--broadcast-text);
+}
+body.broadcast .election {
+  background: rgba(255, 255, 255, 0.04);
+  border-color: var(--broadcast-line);
+}
+body.broadcast a { color: var(--broadcast-text); }
+
+.hero-number {
+  font-family: Georgia, 'Iowan Old Style', 'Times New Roman', serif;
+  font-size: 3.2rem;
+  font-weight: 700;
+  line-height: 1;
+  margin: 0.75rem 0 0.25rem 0;
+}
+.hero-label {
+  color: rgba(237, 239, 236, 0.65);
+  font-size: 0.95rem;
+}
+.progress-track {
+  background: rgba(237, 239, 236, 0.12);
+  border-radius: 4px;
+  height: 10px;
+  margin-top: 1.25rem;
+  overflow: hidden;
+}
+.progress-fill {
+  background: var(--oxblood);
+  height: 100%;
+  border-radius: 4px;
+}
+
+.winner-card {
+  border-top: 3px solid var(--brass) !important;
+}
+.winner-badge {
+  display: inline-block;
+  font-size: 0.75rem;
+  color: var(--brass);
+  border: 1px solid var(--brass);
+  border-radius: 2px;
+  padding: 0.1rem 0.4rem;
+  margin-left: 0.5rem;
+}
+.results-photo, .results-photo-placeholder {
+  width: 56px;
+  height: 56px;
+  border-radius: 2px;
+  object-fit: cover;
+  flex-shrink: 0;
+  border: 1px solid var(--broadcast-line);
+}
+.results-photo-placeholder {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(237, 239, 236, 0.1);
+  color: var(--broadcast-text);
+  font-family: Georgia, serif;
+  font-weight: 700;
+}
+
+.stamp {
+  display: inline-block;
+  border: 1px solid var(--green);
+  color: var(--green);
+  border-radius: 2px;
+  padding: 0.15rem 0.5rem;
+  font-size: 0.8rem;
+  font-weight: 600;
+}
+body.broadcast .stamp { color: #6FBF9A; border-color: #6FBF9A; }

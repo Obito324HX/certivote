@@ -1,9 +1,11 @@
 {% extends "base.html" %}
+{% block body_class %}broadcast{% endblock %}
 {% block content %}
 <div class="card">
-  <h2 style="font-size:1.1rem; margin-top:0;">{{ election.name }}</h2>
+  <h2 style="margin-top:0;">{{ election.name }}</h2>
   {% if result.chain_valid %}
-    <div class="success">Verified: {{ result.total_ballots }} ballots, hash chain intact, no tampering detected.</div>
+    <span class="stamp">Verified</span>
+    <p class="hero-label" style="margin-top:0.5rem;">{{ result.total_ballots }} ballots, hash chain intact, no tampering detected.</p>
   {% else %}
     <div class="error">Integrity check failed at ballot #{{ result.broken_at_ballot_id }}. Do not trust these results.</div>
   {% endif %}
@@ -11,18 +13,26 @@
 
 {% for position in result.tally %}
 <div class="card">
-  <p style="font-weight:600;">{{ position.title }}</p>
+  <p style="font-weight:600; font-family:Georgia,serif;">{{ position.title }}</p>
   {% for r in position.results %}
-    <div class="candidate" style="{% if loop.first and r.votes > 0 %}border-color:#1a1a1a; border-width:2px;{% endif %}">
-      <span>{{ r.name }}{% if loop.first and r.votes > 0 %} &mdash; winner{% endif %}</span>
-      <strong>{{ r.votes }}</strong>
+    <div class="candidate {% if loop.first and r.votes > 0 %}winner-card{% endif %}" style="align-items:center;">
+      {% if r.photo_url %}
+        <img class="results-photo" src="{{ r.photo_url }}" alt="{{ r.name }}">
+      {% else %}
+        <div class="results-photo-placeholder">{{ r.name[0] }}</div>
+      {% endif %}
+      <div style="flex:1;">
+        <span>{{ r.name }}</span>
+        {% if loop.first and r.votes > 0 %}<span class="winner-badge">Winner</span>{% endif %}
+      </div>
+      <strong class="data">{{ r.votes }}</strong>
     </div>
   {% endfor %}
 </div>
 {% endfor %}
 
 <div class="card">
-  <p style="font-size:0.8rem; color:#666;">Root hash (independently verifiable proof of this result):</p>
-  <p style="font-family: monospace; font-size:0.75rem; word-break:break-all; color:#444;">{{ result.root_hash }}</p>
+  <p style="font-size:0.8rem; color:rgba(237,239,236,0.65);">Root hash (independently verifiable proof of this result):</p>
+  <p class="data" style="word-break:break-all; color:rgba(237,239,236,0.85);">{{ result.root_hash }}</p>
 </div>
 {% endblock %}

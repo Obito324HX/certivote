@@ -6,7 +6,7 @@
   <title>Certivote</title>
   <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
 </head>
-<body>
+<body class="{% block body_class %}{% endblock %}">
   <h1>Certivote</h1>
   {% with messages = get_flashed_messages() %}
     {% if messages %}

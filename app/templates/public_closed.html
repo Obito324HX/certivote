@@ -1,9 +1,10 @@
 {% extends "base.html" %}
+{% block body_class %}broadcast{% endblock %}
 {% block content %}
 <div class="card">
-  <h2 style="font-size:1.1rem; margin-top:0;">{{ election.name }}</h2>
+  <h2 style="margin-top:0;">{{ election.name }}</h2>
   <p>Voting has closed. Results are pending official verification and certification.</p>
-  <p style="font-size:0.85rem; color:#666;">Check back shortly &mdash; this page will show the
+  <p style="font-size:0.85rem; color:rgba(237,239,236,0.65);">Check back shortly -- this page will show the
      full, independently verifiable results as soon as they're certified.</p>
 </div>
 {% endblock %}

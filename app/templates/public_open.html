@@ -1,11 +1,20 @@
 {% extends "base.html" %}
+{% block body_class %}broadcast{% endblock %}
 {% block content %}
 <div class="card">
-  <h2 style="font-size:1.1rem; margin-top:0;">{{ election.name }}</h2>
-  <p style="color:#888;">Voting is currently open. Refresh this page to see turnout update.</p>
-  <p style="font-size:2rem; font-weight:700; margin:0.5rem 0;">{{ votes_cast }} / {{ eligible }}</p>
-  <p>students have voted so far.</p>
-  <p style="font-size:0.8rem; color:#666; margin-top:1rem;">
+  <h2 style="margin-top:0;">{{ election.name }}</h2>
+  <p class="hero-label">Voting is open -- refresh to see turnout update</p>
+
+  <div class="hero-number">{{ votes_cast }} <span style="font-size:1.6rem; color:rgba(237,239,236,0.5);">/ {{ eligible }}</span></div>
+  <p class="hero-label">students have voted so far</p>
+
+  <div class="progress-track">
+    <div class="progress-fill" style="width: {{ ((votes_cast / eligible * 100) if eligible else 0) | round(1) }}%;"></div>
+  </div>
+</div>
+
+<div class="card">
+  <p style="font-size:0.85rem; color:rgba(237,239,236,0.65);">
     Candidate results are never shown while voting is open, to avoid influencing
     voters who haven't voted yet. Full results are published here the moment
     polls close and are independently verifiable.

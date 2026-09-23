@@ -44,6 +44,7 @@ def verify_and_tally(election: Election) -> dict:
             results.append({
                 "candidate_id": c.id,
                 "name": c.name,
+                "photo_url": c.photo_url,
                 "votes": counts.get(position.id, {}).get(c.id, 0),
             })
         results.sort(key=lambda x: -x["votes"])

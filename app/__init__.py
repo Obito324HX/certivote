@@ -71,7 +71,7 @@ def create_app():
             "base-uri 'self'; "
             "form-action 'self'; "
             "frame-ancestors 'none'; "
-            "img-src 'self' data:;"
+            "img-src 'self' data: https:;"
         )
         if os.environ.get("ENV") == "production":
             response.headers["Strict-Transport-Security"] = "max-age=63072000; includeSubDomains"

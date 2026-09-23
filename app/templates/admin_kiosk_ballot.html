@@ -1,8 +1,8 @@
 {% extends "base.html" %}
 {% block content %}
 <div class="card">
-  <h2 style="font-size:1.1rem; margin-top:0;">{{ election.name }}</h2>
-  <p style="font-size:0.85rem; color:#666;">Supervised ballot -- hand the device to the student to make their own selections.</p>
+  <h2 style="margin-top:0;">{{ election.name }}</h2>
+  <p style="font-size:0.85rem; color:var(--ink-soft);">Supervised ballot -- hand the device to the student to make their own selections.</p>
   <form method="post" action="{{ url_for('admin_ui.kiosk_cast', exam_number=exam_number, election_id=election.id) }}">
     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
     {% for position in election.positions %}
@@ -10,6 +10,11 @@
         <legend>{{ position.title }}</legend>
         {% for c in position.candidates %}
           <div class="candidate">
+            {% if c.photo_url %}
+              <img class="candidate-photo" src="{{ c.photo_url }}" alt="{{ c.name }}">
+            {% else %}
+              <div class="candidate-photo-placeholder">{{ c.name[0] }}</div>
+            {% endif %}
             <label>
               <input type="radio" name="position_{{ position.id }}" value="{{ c.id }}" required>
               {{ c.name }}
