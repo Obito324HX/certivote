@@ -142,10 +142,12 @@ def kiosk_cast(exam_number, election_id):
     selections = []
     if election:
         for position in election.positions:
-            candidate_id = request.form.get(f"position_{position.id}")
-            if candidate_id:
+            for candidate_id in request.form.getlist(f"position_{position.id}"):
                 selections.append({"position_id": position.id, "candidate_id": int(candidate_id)})
 
     result, status = voting_logic.do_kiosk_cast(current_admin().id, exam_number, election_id, selections)
     flash(result.get("error") if status != 200 else "Vote recorded (supervised).")
+
+    if status != 200:
+        return redirect(url_for("admin_ui.kiosk_ballot", exam_number=exam_number, election_id=election_id))
     return redirect(url_for("admin_ui.dashboard"))

@@ -38,11 +38,17 @@ class AdminRole(enum.Enum):
 
 class Voter(db.Model):
     """
+    One row per eligible student, sourced from the official roster import.
+    Section is set at import time from the school's own records, NOT typed
+    freehand by a registrar at the desk.
+
     pending_phone_number / pending_rebind_effective_at implement the
     re-bind time-lock: while an election is open, a re-bind doesn't take
     effect immediately -- it's staged here and only promoted to
     phone_number once effective_at has passed (see
-    registrar_logic.apply_pending_rebind).
+    registrar_logic.apply_pending_rebind). This closes the window where a
+    compromised/coerced two-admin approval could hijack a voter's
+    identity right before they vote.
     """
     __tablename__ = "voters"
 
@@ -78,12 +84,20 @@ class Election(db.Model):
 
 
 class Position(db.Model):
+    """
+    seats: how many winners this race has. 1 for most positions
+    (President, Secretary, etc.); >1 for a multi-seat race like
+    "Committee Member" (e.g. 3 seats) -- the ballot renders checkboxes
+    instead of radio buttons and lets a voter pick up to `seats`
+    candidates; results mark the top `seats` vote-getters as winners.
+    """
     __tablename__ = "positions"
 
     id = db.Column(db.Integer, primary_key=True)
     election_id = db.Column(db.Integer, db.ForeignKey("elections.id"), nullable=False)
     title = db.Column(db.String(64), nullable=False)
     locked = db.Column(db.Boolean, default=False)
+    seats = db.Column(db.Integer, default=1, nullable=False)
 
     candidates = db.relationship("Candidate", backref="position", lazy=True)
 
@@ -100,12 +114,13 @@ class Candidate(db.Model):
 
 class VoteStatus(db.Model):
     """
-    The UniqueConstraint below is a real database-level guarantee against
-    double voting -- it makes concurrent conflicting inserts fail
-    atomically at the database engine itself; the application code just
-    catches the resulting IntegrityError (see
-    voting_logic._validate_and_write_vote). Equivalent to row-locking for
-    an insert-once pattern, not a weaker substitute for it.
+    Records THAT a voter cast a ballot in an election. Never records WHAT
+    they voted for. The UniqueConstraint below is a real database-level
+    guarantee against double voting -- it makes concurrent conflicting
+    inserts fail atomically at the database engine itself; the
+    application code just needs to catch the resulting IntegrityError
+    (see voting_logic._validate_and_write_vote). This is equivalent to
+    row-locking for an insert-once pattern, not a weaker substitute for it.
     """
     __tablename__ = "vote_status"
 
@@ -141,6 +156,7 @@ class Ballot(db.Model):
 
 class OtpToken(db.Model):
     """
+    One row per OTP request. code_hash is HMAC'd, never stored plain.
     requesting_ip is logged for the audit trail (never tied to the
     ballot -- this is about detecting abuse patterns on the OTP
     endpoint itself, not about deanonymizing a vote).

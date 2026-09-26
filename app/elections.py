@@ -84,6 +84,7 @@ def get_election(election_id):
             "id": p.id,
             "title": p.title,
             "locked": p.locked,
+            "seats": p.seats,
             "candidates": [
                 {"id": c.id, "name": c.name, "photo_url": c.photo_url, "manifesto": c.manifesto}
                 for c in p.candidates
@@ -109,10 +110,18 @@ def add_position(election_id):
     if not title:
         return jsonify({"error": "title is required"}), 400
 
-    position = Position(election_id=election.id, title=title, locked=False)
+    seats = data.get("seats", 1)
+    try:
+        seats = int(seats)
+    except (TypeError, ValueError):
+        return jsonify({"error": "seats must be an integer"}), 400
+    if seats < 1:
+        return jsonify({"error": "seats must be at least 1"}), 400
+
+    position = Position(election_id=election.id, title=title, locked=False, seats=seats)
     db.session.add(position)
     db.session.commit()
-    return jsonify({"id": position.id, "title": position.title, "locked": position.locked}), 201
+    return jsonify({"id": position.id, "title": position.title, "locked": position.locked, "seats": position.seats}), 201
 
 
 @elections_bp.route("/positions/<int:position_id>/candidates", methods=["POST"])

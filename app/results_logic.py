@@ -48,7 +48,14 @@ def verify_and_tally(election: Election) -> dict:
                 "votes": counts.get(position.id, {}).get(c.id, 0),
             })
         results.sort(key=lambda x: -x["votes"])
-        tally.append({"position_id": position.id, "title": position.title, "results": results})
+        for i, r in enumerate(results):
+            r["is_winner"] = i < position.seats and r["votes"] > 0
+        tally.append({
+            "position_id": position.id,
+            "title": position.title,
+            "seats": position.seats,
+            "results": results,
+        })
 
     return {
         "chain_valid": valid,

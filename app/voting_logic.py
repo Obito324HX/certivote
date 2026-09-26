@@ -42,6 +42,7 @@ def eligible_election_or_error(voter: Voter, election: Election):
 
 
 def eligible_open_elections(voter: Voter):
+    """All OPEN elections this voter can still vote in right now."""
     open_elections = Election.query.filter_by(status=ElectionStatus.OPEN).all()
     return [e for e in open_elections if eligible_election_or_error(voter, e) is None]
 
@@ -128,19 +129,35 @@ def do_verify_otp(exam_number: str, election_id: int, otp: str):
 
 
 def _validate_and_write_vote(election: Election, voter: Voter, selections: list):
+    """
+    Shared by the normal OTP-verified cast and the supervised kiosk cast.
+    Same anonymity split, same hash-chaining, same one-vote-per-election
+    enforcement regardless of which path authenticated the voter.
+
+    Each position must get between 1 and position.seats selections (not
+    necessarily exactly `seats` -- a voter can pick fewer than the full
+    slate for a multi-seat race like Committee Member, but must cast at
+    least one selection in every race). Duplicate candidates within one
+    position are rejected.
+    """
     if election.status != ElectionStatus.OPEN:
         return {"error": "this election is no longer open"}, 409
 
     positions = {p.id: p for p in election.positions}
     submitted_position_ids = {s.get("position_id") for s in selections}
     if submitted_position_ids != set(positions.keys()):
-        return {"error": "your ballot must include exactly one selection for every position"}, 400
+        return {"error": "your ballot must include at least one selection for every position"}, 400
 
-    for s in selections:
-        position = positions[s["position_id"]]
-        candidate_ids = {c.id for c in position.candidates}
-        if s.get("candidate_id") not in candidate_ids:
-            return {"error": f"invalid candidate for position '{position.title}'"}, 400
+    for position_id, position in positions.items():
+        chosen = [s["candidate_id"] for s in selections if s["position_id"] == position_id]
+        if len(chosen) > position.seats:
+            return {"error": f"'{position.title}' allows at most {position.seats} selection(s)"}, 400
+        if len(set(chosen)) != len(chosen):
+            return {"error": f"duplicate candidate selected for '{position.title}'"}, 400
+        valid_candidate_ids = {c.id for c in position.candidates}
+        for candidate_id in chosen:
+            if candidate_id not in valid_candidate_ids:
+                return {"error": f"invalid candidate for position '{position.title}'"}, 400
 
     try:
         db.session.add(VoteStatus(election_id=election.id, voter_id=voter.id))
@@ -152,7 +169,7 @@ def _validate_and_write_vote(election: Election, voter: Voter, selections: list)
                        .first())
         prev_hash = last_ballot.hash if last_ballot else hash_value(f"genesis:{election.id}")
 
-        for s in sorted(selections, key=lambda x: x["position_id"]):
+        for s in sorted(selections, key=lambda x: (x["position_id"], x["candidate_id"])):
             timestamp = datetime.utcnow().isoformat()
             new_hash = Ballot.compute_hash(prev_hash, election.id, s["position_id"], s["candidate_id"], timestamp)
             db.session.add(Ballot(
@@ -203,6 +220,14 @@ def do_cast_ballot(raw_token: str, selections: list):
 
 
 def do_kiosk_cast(actor_id: int, exam_number: str, election_id: int, selections: list):
+    """
+    Supervised, in-person voting for a student with no phone/lost access.
+    actor_id is the logged-in registrar performing the supervision --
+    they are expected to have already checked the student's ID card,
+    the same as any other in-person registrar action. Logged to the
+    audit trail as action='kiosk_vote' so it's always visible who
+    supervised it and when, never an invisible shortcut.
+    """
     voter = Voter.query.filter_by(exam_number=exam_number).first()
     if voter is None:
         return {"error": "no voter with that exam number in the roster"}, 404

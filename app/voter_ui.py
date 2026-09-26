@@ -106,13 +106,13 @@ def cast():
     election = db.session.get(Election, election_id)
     selections = []
     for position in election.positions:
-        candidate_id = request.form.get(f"position_{position.id}")
-        if candidate_id:
+        for candidate_id in request.form.getlist(f"position_{position.id}"):
             selections.append({"position_id": position.id, "candidate_id": int(candidate_id)})
 
     result, status = logic.do_cast_ballot(token, selections)
-    session.clear()
 
     if status != 200:
-        return render_template("confirmation.html", ok=False, error=result.get("error"))
+        return render_template("ballot.html", election=election, error=result.get("error"))
+
+    session.clear()
     return render_template("confirmation.html", ok=True)

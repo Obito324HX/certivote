@@ -13,9 +13,9 @@
 
 {% for position in result.tally %}
 <div class="card">
-  <p style="font-weight:600; font-family:Georgia,serif;">{{ position.title }}</p>
+  <p style="font-weight:600; font-family:Georgia,serif;">{{ position.title }}{% if position.seats > 1 %} ({{ position.seats }} seats){% endif %}</p>
   {% for r in position.results %}
-    <div class="candidate {% if loop.first and r.votes > 0 %}winner-card{% endif %}" style="align-items:center;">
+    <div class="candidate {% if r.is_winner %}winner-card{% endif %}" style="align-items:center;">
       {% if r.photo_url %}
         <img class="results-photo" src="{{ r.photo_url }}" alt="{{ r.name }}">
       {% else %}
@@ -23,7 +23,7 @@
       {% endif %}
       <div style="flex:1;">
         <span>{{ r.name }}</span>
-        {% if loop.first and r.votes > 0 %}<span class="winner-badge">Winner</span>{% endif %}
+        {% if r.is_winner %}<span class="winner-badge">Winner</span>{% endif %}
       </div>
       <strong class="data">{{ r.votes }}</strong>
     </div>
