@@ -4,6 +4,8 @@ turnout counting. Used by both the authenticated audit route
 (results.py) and the public no-login pages (public_ui.py).
 """
 
+from flask import url_for
+
 from .models import db, Election, ElectionScope, Ballot, Voter, VoteStatus
 from .security import hash_value
 
@@ -41,10 +43,11 @@ def verify_and_tally(election: Election) -> dict:
     for position in election.positions:
         results = []
         for c in position.candidates:
+            photo_src = url_for("candidate_photo", candidate_id=c.id) if c.photo_data else c.photo_url
             results.append({
                 "candidate_id": c.id,
                 "name": c.name,
-                "photo_url": c.photo_url,
+                "photo_src": photo_src,
                 "votes": counts.get(position.id, {}).get(c.id, 0),
             })
         results.sort(key=lambda x: -x["votes"])
@@ -67,6 +70,9 @@ def verify_and_tally(election: Election) -> dict:
 
 
 def eligible_voter_count(election: Election) -> int:
+    """Registered (phone-bound) voters in scope for this election -- the
+    turnout denominator. Someone who never registered can't vote at all,
+    so they're not counted as part of the electorate here."""
     query = Voter.query.filter(Voter.phone_number.isnot(None))
     if election.scope == ElectionScope.SECTIONAL:
         query = query.filter_by(section=election.section)

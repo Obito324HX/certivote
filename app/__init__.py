@@ -40,6 +40,7 @@ def create_app():
     from .voter_ui import voter_ui_bp
     from .admin_ui import admin_ui_bp
     from .public_ui import public_ui_bp
+    from .election_ui import election_ui_bp
     app.register_blueprint(auth_bp)
     app.register_blueprint(registrar_bp)
     app.register_blueprint(elections_bp)
@@ -48,6 +49,7 @@ def create_app():
     app.register_blueprint(voter_ui_bp)
     app.register_blueprint(admin_ui_bp)
     app.register_blueprint(public_ui_bp)
+    app.register_blueprint(election_ui_bp)
 
     csrf.exempt(auth_bp)
     csrf.exempt(registrar_bp)
@@ -58,6 +60,15 @@ def create_app():
     @app.route("/")
     def root():
         return redirect(url_for("voter_ui.index"))
+
+    @app.route("/candidates/<int:candidate_id>/photo")
+    def candidate_photo(candidate_id):
+        from flask import Response, abort
+        from .models import Candidate
+        candidate = db.session.get(Candidate, candidate_id)
+        if candidate is None or not candidate.photo_data:
+            abort(404)
+        return Response(candidate.photo_data, mimetype=candidate.photo_mimetype or "image/jpeg")
 
     @app.after_request
     def set_security_headers(response):

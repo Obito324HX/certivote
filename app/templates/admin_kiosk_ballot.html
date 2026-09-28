@@ -11,7 +11,9 @@
         <legend>{{ position.title }}{% if position.seats > 1 %} (choose up to {{ position.seats }}){% endif %}</legend>
         {% for c in position.candidates %}
           <div class="candidate">
-            {% if c.photo_url %}
+            {% if c.photo_data %}
+              <img class="candidate-photo" src="{{ url_for('candidate_photo', candidate_id=c.id) }}" alt="{{ c.name }}">
+            {% elif c.photo_url %}
               <img class="candidate-photo" src="{{ c.photo_url }}" alt="{{ c.name }}">
             {% else %}
               <div class="candidate-photo-placeholder">{{ c.name[0] }}</div>

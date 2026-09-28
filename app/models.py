@@ -103,12 +103,23 @@ class Position(db.Model):
 
 
 class Candidate(db.Model):
+    """
+    photo_data/photo_mimetype hold an uploaded photo directly in the
+    database (served via the top-level candidate_photo route). This is
+    deliberate: Render's free-tier filesystem is ephemeral (wiped on
+    every redeploy or 15-minute idle spin-down), so a photo saved to
+    local disk would vanish unpredictably. Postgres is the actual
+    persistent store here. photo_url still exists for a plain external
+    image link if preferred.
+    """
     __tablename__ = "candidates"
 
     id = db.Column(db.Integer, primary_key=True)
     position_id = db.Column(db.Integer, db.ForeignKey("positions.id"), nullable=False)
     name = db.Column(db.String(128), nullable=False)
     photo_url = db.Column(db.String(256), nullable=True)
+    photo_data = db.Column(db.LargeBinary, nullable=True)
+    photo_mimetype = db.Column(db.String(32), nullable=True)
     manifesto = db.Column(db.Text, nullable=True)
 
 

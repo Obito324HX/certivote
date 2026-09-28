@@ -1,0 +1,14 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="card">
+  <p>Elections in draft (add positions/candidates before opening)</p>
+  {% for e in elections %}
+    <div class="election">
+      <span>{{ e.name }}</span>
+      <a href="{{ url_for('election_ui.show', election_id=e.id) }}"><button type="button">Configure</button></a>
+    </div>
+  {% else %}
+    <p>No draft elections yet.</p>
+  {% endfor %}
+</div>
+{% endblock %}

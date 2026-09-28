@@ -27,6 +27,8 @@
 
 * { box-sizing: border-box; }
 
+html, body { overflow-x: hidden; }
+
 body {
   font-family: system-ui, -apple-system, sans-serif;
   max-width: 480px;
@@ -35,6 +37,7 @@ body {
   background: var(--paper);
   color: var(--ink);
   line-height: 1.45;
+  overflow-wrap: break-word;
 }
 
 h1 {
@@ -183,6 +186,8 @@ legend {
 .data {
   font-family: ui-monospace, 'SF Mono', Consolas, monospace;
   font-size: 0.85rem;
+  word-break: break-all;
+  overflow-wrap: anywhere;
 }
 
 /* ---- Broadcast theme: public turnout + results reveal only ---- */
@@ -207,6 +212,11 @@ body.broadcast .success {
 body.broadcast .election {
   background: rgba(255, 255, 255, 0.04);
   border-color: var(--broadcast-line);
+}
+body.broadcast .candidate {
+  background: rgba(255, 255, 255, 0.04);
+  border-color: var(--broadcast-line);
+  color: var(--broadcast-text);
 }
 body.broadcast a { color: var(--broadcast-text); }
 

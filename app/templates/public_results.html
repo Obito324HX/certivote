@@ -16,12 +16,12 @@
   <p style="font-weight:600; font-family:Georgia,serif;">{{ position.title }}{% if position.seats > 1 %} ({{ position.seats }} seats){% endif %}</p>
   {% for r in position.results %}
     <div class="candidate {% if r.is_winner %}winner-card{% endif %}" style="align-items:center;">
-      {% if r.photo_url %}
-        <img class="results-photo" src="{{ r.photo_url }}" alt="{{ r.name }}">
+      {% if r.photo_src %}
+        <img class="results-photo" src="{{ r.photo_src }}" alt="{{ r.name }}">
       {% else %}
         <div class="results-photo-placeholder">{{ r.name[0] }}</div>
       {% endif %}
-      <div style="flex:1;">
+      <div style="flex:1; min-width:0;">
         <span>{{ r.name }}</span>
         {% if r.is_winner %}<span class="winner-badge">Winner</span>{% endif %}
       </div>
@@ -32,7 +32,11 @@
 {% endfor %}
 
 <div class="card">
-  <p style="font-size:0.8rem; color:rgba(237,239,236,0.65);">Root hash (independently verifiable proof of this result):</p>
-  <p class="data" style="word-break:break-all; color:rgba(237,239,236,0.85);">{{ result.root_hash }}</p>
+  <details>
+    <summary style="cursor:pointer; font-size:0.8rem; color:rgba(237,239,236,0.65);">
+      Verification hash (for independent audit)
+    </summary>
+    <p class="data" style="margin-top:0.5rem; color:rgba(237,239,236,0.85);">{{ result.root_hash }}</p>
+  </details>
 </div>
 {% endblock %}

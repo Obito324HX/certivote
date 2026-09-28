@@ -5,7 +5,7 @@
      &mdash;
      <form method="post" action="{{ url_for('admin_ui.logout') }}" style="display:inline;">
        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-       <button type="submit" style="background:none; color:#666; padding:0; margin:0; border:none; text-decoration:underline; cursor:pointer;">log out</button>
+       <button type="submit" style="background:none; color:var(--ink-soft); padding:0; margin:0; border:none; text-decoration:underline; cursor:pointer;">log out</button>
      </form>
   </p>
 </div>
@@ -26,7 +26,7 @@
   <p>Phone: {{ voter.phone_masked }}
      {% if voter.phone_bound %} (bound){% else %} (not yet registered){% endif %}</p>
   {% if voter.pending_rebind %}
-    <p style="font-size:0.85rem; color:#8a6d1c;">A re-bind is scheduled and not yet active
+    <p style="font-size:0.85rem; color:var(--ink-soft);"><strong>Pending:</strong> a re-bind is scheduled and not yet active
        (takes effect at {{ voter.pending_effective_at }}).</p>
   {% endif %}
 
@@ -36,7 +36,7 @@
 
   {% if not voter.phone_bound %}
     <p>First-time registration &mdash; confirm the student's ID card before binding a number.</p>
-    <p style="font-size:0.8rem; color:#666;">
+    <p style="font-size:0.8rem; color:var(--ink-soft);">
       Privacy notice: your name and phone number are used only to verify your identity when
       voting. This data is deleted automatically 15 days after the last election of this
       cycle closes. Your vote itself is never linked to your identity in any record.
@@ -72,6 +72,9 @@
 {% endif %}
 
 {% if admin.role.value == "super_admin" %}
+<div class="card">
+  <p><a href="{{ url_for('election_ui.index') }}">Configure elections &amp; candidates &rarr;</a></p>
+</div>
 <div class="card">
   <p>Import / update voter roster (CSV: exam_number, section, full_name)</p>
   <form method="post" action="{{ url_for('admin_ui.import_roster') }}" enctype="multipart/form-data">

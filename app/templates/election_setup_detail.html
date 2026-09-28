@@ -1,0 +1,40 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="card">
+  <h2 style="margin-top:0;">{{ election.name }}</h2>
+  <p style="font-size:0.85rem; color:var(--ink-soft);">{{ election.scope.value }}{% if election.section %} &mdash; {{ election.section }}{% endif %}, status: {{ election.status.value }}</p>
+</div>
+
+{% for position in election.positions %}
+<div class="card">
+  <p style="font-weight:600; font-family:Georgia,serif;">{{ position.title }}{% if position.seats > 1 %} ({{ position.seats }} seats){% endif %}</p>
+
+  {% for c in position.candidates %}
+    <div class="candidate">
+      {% if c.photo_data %}
+        <img class="candidate-photo" src="{{ url_for('candidate_photo', candidate_id=c.id) }}" alt="{{ c.name }}">
+      {% elif c.photo_url %}
+        <img class="candidate-photo" src="{{ c.photo_url }}" alt="{{ c.name }}">
+      {% else %}
+        <div class="candidate-photo-placeholder">{{ c.name[0] }}</div>
+      {% endif %}
+      <span style="flex:1;">{{ c.name }}</span>
+    </div>
+  {% endfor %}
+
+  {% if not position.locked %}
+    <form method="post" action="{{ url_for('election_ui.add_candidate', position_id=position.id) }}"
+          enctype="multipart/form-data" style="margin-top:0.75rem;">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <label for="name-{{ position.id }}">Candidate name</label>
+      <input type="text" id="name-{{ position.id }}" name="name" required>
+      <label for="photo-{{ position.id }}">Photo (optional, JPEG/PNG/WebP, under 500KB)</label>
+      <input type="file" id="photo-{{ position.id }}" name="photo" accept="image/jpeg,image/png,image/webp">
+      <button type="submit">Add candidate</button>
+    </form>
+  {% else %}
+    <p style="font-size:0.8rem; color:var(--ink-soft); margin-top:0.5rem;">Locked -- election is no longer in draft.</p>
+  {% endif %}
+</div>
+{% endfor %}
+{% endblock %}
