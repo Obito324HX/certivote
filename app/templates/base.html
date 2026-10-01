@@ -8,9 +8,11 @@
 </head>
 <body class="{% block body_class %}{% endblock %}">
   <h1>Certivote</h1>
-  {% with messages = get_flashed_messages() %}
+  {% with messages = get_flashed_messages(with_categories=true) %}
     {% if messages %}
-      {% for m in messages %}<div class="error">{{ m }}</div>{% endfor %}
+      {% for category, m in messages %}
+        <div class="{{ 'success' if category == 'success' else 'error' }}">{{ m }}</div>
+      {% endfor %}
     {% endif %}
   {% endwith %}
   {% block content %}{% endblock %}

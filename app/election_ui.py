@@ -77,5 +77,5 @@ def add_candidate(position_id):
         photo_data=photo_data, photo_mimetype=photo_mimetype,
     ))
     db.session.commit()
-    flash(f"Added {name} to {position.title}.")
+    flash(f"Added {name} to {position.title}.", "success")
     return redirect(url_for("election_ui.show", election_id=position.election_id))

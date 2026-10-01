@@ -65,7 +65,10 @@ def register():
     phone_number = request.form.get("phone_number", "").strip()
 
     result, status = logic.do_register(current_admin().id, exam_number, phone_number)
-    flash(result.get("error") if status != 200 else "Phone number registered.")
+    if status != 200:
+        flash(result.get("error"))
+    else:
+        flash("Phone number registered.", "success")
 
     voter, _ = logic.do_lookup(exam_number)
     return render_template("admin_dashboard.html", admin=current_admin(),
@@ -83,7 +86,10 @@ def rebind():
     result, status = logic.do_rebind(
         current_admin().id, exam_number, new_phone_number, approver_username, approver_password
     )
-    flash(result.get("error") if status != 200 else result.get("message", "Phone number re-bound."))
+    if status != 200:
+        flash(result.get("error"))
+    else:
+        flash(result.get("message", "Phone number re-bound."), "success")
 
     voter, _ = logic.do_lookup(exam_number)
     return render_template("admin_dashboard.html", admin=current_admin(),
@@ -101,7 +107,7 @@ def import_roster():
     if status != 200:
         flash(result.get("error"))
     else:
-        flash(f"Roster imported: {result['created']} created, {result['updated']} updated.")
+        flash(f"Roster imported: {result['created']} created, {result['updated']} updated.", "success")
 
     return redirect(url_for("admin_ui.dashboard"))
 
@@ -146,7 +152,10 @@ def kiosk_cast(exam_number, election_id):
                 selections.append({"position_id": position.id, "candidate_id": int(candidate_id)})
 
     result, status = voting_logic.do_kiosk_cast(current_admin().id, exam_number, election_id, selections)
-    flash(result.get("error") if status != 200 else "Vote recorded (supervised).")
+    if status != 200:
+        flash(result.get("error"))
+    else:
+        flash("Vote recorded (supervised).", "success")
 
     if status != 200:
         return redirect(url_for("admin_ui.kiosk_ballot", exam_number=exam_number, election_id=election_id))
